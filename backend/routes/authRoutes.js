@@ -46,7 +46,7 @@ router.post('/login', async (req, res) => {
 })
 
 router.get("/linkedin", (req, res) => {
-  const scope = "r_liteprofile r_emailaddress w_member_social";
+  const scope = "r_liteprofile w_member_social";
   const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${process.env.LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.LINKEDIN_REDIRECT_URI)}&scope=${encodeURIComponent(scope)}`;
   res.redirect(linkedinAuthUrl);
 });
