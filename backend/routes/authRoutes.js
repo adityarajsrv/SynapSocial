@@ -44,4 +44,37 @@ router.post('/login', async (req, res) => {
     }
 })
 
+router.get("/linkedin", (req, res) => {
+  const scope = "r_liteprofile r_emailaddress w_member_social";
+  const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${process.env.LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.LINKEDIN_REDIRECT_URI)}&scope=${encodeURIComponent(scope)}`;
+  res.redirect(linkedinAuthUrl);
+});
+
+router.get("/linkedin/callback", async (req, res) => {
+  const code = req.query.code;
+
+  try {
+    const body = new URLSearchParams({
+      client_id: process.env.LINKEDIN_CLIENT_ID,
+      client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
+    }).toString();
+
+    const tokenResponse = await axios.post(
+      "https://www.linkedin.com/oauth/v2/accessToken",
+      body,
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+    res.send(`LinkedIn Access Token: ${accessToken}`);
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).send("LinkedIn OAuth failed");
+  }
+});
+
+
 module.exports = router;
