@@ -8,8 +8,7 @@ import {
   RiMagicLine,
   RiTimeLine,
   RiArrowRightLine,
-  RiFacebookCircleLine,
-  RiYoutubeLine,
+  RiLinkedinFill as LinkedInIcon,
   RiArrowUpLine,
   RiArrowDownLine,
   RiDeleteBinLine,
@@ -113,7 +112,7 @@ const MainContent = ({ userName }) => {
     {
       name: "Flow Forge",
       handle: "@flowforgepage",
-      platform: "facebook",
+      platform: "linkedin",
       metric: "2.9%",
       label: "Page Reach",
       change: "-0.3%",
@@ -142,7 +141,7 @@ const MainContent = ({ userName }) => {
     },
     {
       id: 3,
-      platform: "facebook",
+      platform: "linkedin",
       handle: "@flowforgepage",
       content: "Excited to announce our new partnership with TechInnovate! Together we're pushing the boundaries of digital transformation.",
       time: "1 day ago",
@@ -154,16 +153,14 @@ const MainContent = ({ userName }) => {
   const PlatformIcon = ({ platform, size = 20 }) => {
     const icons = {
       twitter: TwitterIcon,
-      youtube: RiYoutubeLine,
       instagram: InstagramIcon,
-      facebook: RiFacebookCircleLine,
+      linkedin: LinkedInIcon,
     };
     const Icon = icons[platform] || TwitterIcon;
     const colors = {
       twitter: "text-black",
       instagram: "text-pink-500",
-      facebook: "text-blue-600",
-      youtube: "text-red-500"
+      linkedin: "text-blue-600",
     };
     
     return <Icon className={`w-${size} h-${size} ${colors[platform]}`} />;

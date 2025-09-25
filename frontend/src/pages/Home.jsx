@@ -43,9 +43,11 @@ const Home = () => {
             today.
           </p>
           <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-5 items-center mt-4 sm:mt-5">
-            <button className="py-2 sm:py-3 px-5 sm:px-8 lg:px-10 cursor-pointer bg-white rounded-3xl shadow-md hover:shadow-neutral-600 hover:scale-101 text-sm sm:text-base">
-              Get Started
-            </button>
+            <Link to="/login">
+              <button className="py-2 sm:py-3 px-5 sm:px-8 lg:px-10 cursor-pointer bg-white rounded-3xl shadow-md hover:shadow-neutral-600 hover:scale-101 text-sm sm:text-base">
+                Get Started
+              </button>
+            </Link>
             <button className="py-2 sm:py-3 px-5 sm:px-8 lg:px-10 cursor-pointer bg-white rounded-3xl shadow-md hover:shadow-neutral-600 hover:scale-101 text-sm sm:text-base">
               Learn More
             </button>
