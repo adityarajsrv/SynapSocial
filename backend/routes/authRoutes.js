@@ -3,6 +3,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require("axios");
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -78,6 +79,10 @@ router.get("/linkedin/callback", async (req, res) => {
 });
 
 router.get("/x", (req, res) => {
+    const codeVerifier = crypto.randomBytes(32).toString("hex");
+    const codeChallenge = codeVerifier;
+    req.session.codeVerifier = codeVerifier;
+
     const params = new URLSearchParams({
         response_type: "code",
         client_id: process.env.X_CLIENT_ID,
@@ -95,6 +100,10 @@ router.get("/x", (req, res) => {
 router.get("/x/callback", async (req, res) => {
     const { code } = req.query;
 
+    if (!code || !req.session.codeVerifier) {
+        return res.status(400).send("Invalid request: missing code or session expired");
+    }
+
     try{
         const body = new URLSearchParams({
             client_id: process.env.X_CLIENT_ID,
@@ -102,7 +111,7 @@ router.get("/x/callback", async (req, res) => {
             code,
             grant_type: "authorization_code",
             redirect_uri: process.env.X_REDIRECT_URI,
-            code_verifier: "challenge"
+            code_verifier: req.session.codeVerifier
         }).toString();
 
         const response = await axios.post(
@@ -112,6 +121,7 @@ router.get("/x/callback", async (req, res) => {
         );
 
         const { access_token, refresh_token } = response.data;
+        req.session.codeVerifier = null;
         res.json({ access_token, refresh_token });
     }catch(err){
         console.error(err.response?.data || err.message);
