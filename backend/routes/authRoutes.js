@@ -7,6 +7,17 @@ const crypto = require('crypto');
 
 const router = express.Router();
 
+function base64URLEncode(str) {
+    return str.toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+}
+
+function sha256(buffer) {
+    return crypto.createHash('sha256').update(buffer).digest();
+}
+
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -123,7 +134,7 @@ router.get("/x/callback", async (req, res) => {
                 }
             }
         );
-        
+
         const { access_token, refresh_token } = response.data;
         req.session.codeVerifier = null;
         res.json({ access_token, refresh_token });
