@@ -77,5 +77,46 @@ router.get("/linkedin/callback", async (req, res) => {
     }
 });
 
+router.get("/x", (req, res) => {
+    const params = new URLSearchParams({
+        response_type: "code",
+        client_id: process.env.X_CLIENT_ID,
+        redirect_uri: process.env.X_REDIRECT_URI,
+        scope: "tweet.read tweet.write users.read offline.access",
+        state: "random_string",
+        code_challenge: "challenge",
+        code_challenge_method: "plain"
+    })
+
+    const url = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
+    res.redirect(url);
+})
+
+router.get("/x/callback", async (req, res) => {
+    const { code } = req.query;
+
+    try{
+        const body = new URLSearchParams({
+            client_id: process.env.X_CLIENT_ID,
+            client_secret: process.env.X_CLIENT_SECRET,
+            code,
+            grant_type: "authorization_code",
+            redirect_uri: process.env.X_REDIRECT_URI,
+            code_verifier: "challenge"
+        }).toString();
+
+        const response = await axios.post(
+            "https://api.twitter.com/2/oauth2/token",
+            body,
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+
+        const { access_token, refresh_token } = response.data;
+        res.json({ access_token, refresh_token });
+    }catch(err){
+        console.error(err.response?.data || err.message);
+        res.status(500).send("X OAuth failed");
+    }
+})
 
 module.exports = router;
