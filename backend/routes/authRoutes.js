@@ -14,6 +14,14 @@ function base64URLEncode(str) {
         .replace(/=+$/, '');
 }
 
+function generateToken(user) {
+  return jwt.sign(
+    { id: user._id, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+}
+
 function sha256(buffer) {
     return crypto.createHash('sha256').update(buffer).digest();
 }
@@ -64,29 +72,59 @@ router.get("/linkedin", (req, res) => {
 });
 
 router.get("/linkedin/callback", async (req, res) => {
+  try {
     const code = req.query.code;
+    const tokenRes = await axios.post(
+      "https://www.linkedin.com/oauth/v2/accessToken",
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
+        client_id: process.env.LINKEDIN_CLIENT_ID,
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-    try {
-        const body = new URLSearchParams({
-            grant_type: "authorization_code",
-            code,
-            redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
-            client_id: process.env.LINKEDIN_CLIENT_ID,
-            client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-        }).toString();
+    const accessToken = tokenRes.data.access_token;
+    const expiresIn = tokenRes.data.expires_in; // seconds
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-        const tokenResponse = await axios.post(
-            "https://www.linkedin.com/oauth/v2/accessToken",
-            body,
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
+    const profileRes = await axios.get(
+      "https://api.linkedin.com/v2/me",
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
 
-        const accessToken = tokenResponse.data.access_token;
-        res.send(`LinkedIn Access Token: ${accessToken}`);
-    } catch (err) {
-        console.error(err.response?.data || err.message);
-        res.status(500).send("LinkedIn OAuth failed");
+    const emailRes = await axios.get(
+      "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    const name = `${profileRes.data.localizedFirstName} ${profileRes.data.localizedLastName}`;
+    const email = emailRes.data.elements[0]["handle~"].emailAddress;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        password: await bcrypt.hash(crypto.randomBytes(10).toString("hex"), 10), // dummy password
+      });
     }
+
+    user.linkedIn = {
+      accessToken,
+      refreshToken: tokenRes.data.refresh_token || user.linkedIn?.refreshToken,
+      expiresAt,
+    };
+    await user.save();
+
+    const token = generateToken(user);
+    res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}`);
+  } catch (err) {
+    console.error("LinkedIn callback error:", err.response?.data || err.message);
+    res.redirect(`${process.env.CLIENT_URL}/auth-error`);
+  }
 });
 
 router.get("/x", (req, res) => {
@@ -110,39 +148,53 @@ router.get("/x", (req, res) => {
 });
 
 router.get("/x/callback", async (req, res) => {
+  try {
     const { code } = req.query;
-    const codeVerifier = req.session.codeVerifier;
 
-    if (!code || !codeVerifier) {
-        return res.status(400).send("Invalid request: missing code or session expired");
+    const tokenRes = await axios.post(
+      "https://api.twitter.com/2/oauth2/token",
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: process.env.X_REDIRECT_URI,
+        client_id: process.env.X_CLIENT_ID,
+        code_verifier: req.session.codeVerifier,
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    const { access_token, refresh_token, expires_in } = tokenRes.data;
+    const expiresAt = new Date(Date.now() + expires_in * 1000);
+    const profileRes = await axios.get("https://api.twitter.com/2/users/me", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+
+    const { id, name, username } = profileRes.data.data;
+
+    let user = await User.findOne({ email: req.user?.email }); 
+    if (!user) {
+      user = await User.create({
+        name,
+        email: `${username}@x.com`,
+        password: await bcrypt.hash(crypto.randomBytes(10).toString("hex"), 10),
+      });
     }
-    try {
-        const credentials = Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`).toString('base64');
-        const body = new URLSearchParams({
-            grant_type: "authorization_code",
-            code,
-            redirect_uri: process.env.X_REDIRECT_URI,
-            code_verifier: codeVerifier
-        }).toString();
-        const response = await axios.post(
-            "https://api.twitter.com/2/oauth2/token",
-            body,
-            {
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": `Basic ${credentials}`
-                }
-            }
-        );
 
-        const { access_token, refresh_token } = response.data;
-        req.session.codeVerifier = null;
-        res.json({ access_token, refresh_token });
+    user.twitter = {
+      accessToken: access_token,
+      refreshToken: refresh_token,
+      expiresAt,
+    };
+    await user.save();
 
-    } catch (err) {
-        console.error(err.response?.data || err.message);
-        res.status(500).send("X OAuth failed");
-    }
+    const token = generateToken(user);
+    res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}`);
+  } catch (err) {
+    console.error("X callback error:", err.response?.data || err.message);
+    res.redirect(`${process.env.CLIENT_URL}/auth-error`);
+  }
 });
+
+
 
 module.exports = router;
