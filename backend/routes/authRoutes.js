@@ -85,35 +85,41 @@ router.get("/linkedin", (req, res) => {
 router.get("/linkedin/callback", async (req, res) => {
   try {
     const code = req.query.code;
+    if (!code) {
+      return res.redirect(`${process.env.CLIENT_URL}/auth-error`);
+    }
+
+    // 1️⃣ Exchange code for access token
     const tokenRes = await axios.post(
       "https://www.linkedin.com/oauth/v2/accessToken",
       new URLSearchParams({
         grant_type: "authorization_code",
         code,
         redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
-        client_id: process.env.LINKEDIN_CLIENT_ID,
-        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+        client_id: LINKEDIN_CLIENT_ID,
+        client_secret: LINKEDIN_CLIENT_SECRET,
       }),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    const accessToken = tokenRes.data.access_token;
-    const expiresIn = tokenRes.data.expires_in; // seconds
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    const { access_token, expires_in } = tokenRes.data;
+    const expiresAt = new Date(Date.now() + expires_in * 1000);
 
+    // 2️⃣ Fetch user's profile
     const profileRes = await axios.get(
       "https://api.linkedin.com/v2/me",
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${access_token}` } }
     );
 
     const emailRes = await axios.get(
       "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${access_token}` } }
     );
 
     const name = `${profileRes.data.localizedFirstName} ${profileRes.data.localizedLastName}`;
     const email = emailRes.data.elements[0]["handle~"].emailAddress;
 
+    // 3️⃣ Find or create user
     let user = await User.findOne({ email });
     if (!user) {
       user = await User.create({
@@ -123,13 +129,14 @@ router.get("/linkedin/callback", async (req, res) => {
       });
     }
 
+    // 4️⃣ Save LinkedIn tokens
     user.linkedIn = {
-      accessToken,
-      refreshToken: tokenRes.data.refresh_token || user.linkedIn?.refreshToken,
+      accessToken: access_token,
       expiresAt,
     };
     await user.save();
 
+    // 5️⃣ Generate JWT and redirect to frontend
     const token = generateToken(user);
     res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}`);
   } catch (err) {

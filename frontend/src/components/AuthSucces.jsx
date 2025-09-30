@@ -9,7 +9,7 @@ const AuthSuccess = () => {
     const token = params.get("token");
     if (token) {
       localStorage.setItem("jwtToken", token);
-      navigate("/dashboard"); // Replace with MainContent route
+      navigate("/dashboard"); 
     }
   }, [navigate]);
 
