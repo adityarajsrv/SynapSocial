@@ -7,6 +7,17 @@ const crypto = require('crypto');
 
 const router = express.Router();
 
+// LinkedIn
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+const LINKEDIN_REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI;
+
+// X (Twitter)
+const X_CLIENT_ID = process.env.X_CLIENT_ID;
+const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
+const X_REDIRECT_URI = process.env.X_REDIRECT_URI;
+
+
 function base64URLEncode(str) {
     return str.toString('base64')
         .replace(/\+/g, '-')
@@ -138,7 +149,7 @@ router.get("/x", (req, res) => {
         client_id: process.env.X_CLIENT_ID,
         redirect_uri: process.env.X_REDIRECT_URI,
         scope: "tweet.read tweet.write users.read offline.access",
-        state: "random_state_string", // CSRF protection
+        state: "random_state_string", 
         code_challenge: codeChallenge,
         code_challenge_method: "S256"
     });
@@ -195,6 +206,23 @@ router.get("/x/callback", async (req, res) => {
   }
 });
 
+router.get("/accounts", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ msg: "Unauthorized" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    const accounts = [];
+    if (user.linkedIn) accounts.push({ platform: "linkedin", username: user.name });
+    if (user.twitter) accounts.push({ platform: "twitter", username: user.twitter.username || user.name });
+
+    res.json({ accounts });
+  } catch (err) {
+    res.status(401).json({ msg: "Unauthorized" });
+  }
+});
 
 
 module.exports = router;

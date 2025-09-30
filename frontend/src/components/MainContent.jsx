@@ -20,21 +20,13 @@ const MainContent = ({ userName }) => {
   const [currentTime, setCurrentTime] = useState("");
   const [todos, setTodos] = useState([
     { id: 1, text: "Review draft post", completed: false, priority: "medium" },
-    {
-      id: 2,
-      text: "Approve 2 pending posts",
-      completed: false,
-      priority: "high",
-    },
-    {
-      id: 3,
-      text: "Schedule weekly content",
-      completed: false,
-      priority: "medium",
-    },
+    { id: 2, text: "Approve 2 pending posts", completed: false, priority: "high" },
+    { id: 3, text: "Schedule weekly content", completed: false, priority: "medium" },
   ]);
   const [newTodo, setNewTodo] = useState("");
   const [connectedAccounts, setConnectedAccounts] = useState([]);
+
+  const REACT_API_URL = import.meta.env.VITE_REACT_APP_API_URL || "http://localhost:5000/api";
 
   useEffect(() => {
     const updateTime = () => {
@@ -51,6 +43,25 @@ const MainContent = ({ userName }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch connected accounts
+  useEffect(() => {
+    const fetchConnectedAccounts = async () => {
+      const token = localStorage.getItem("jwtToken");
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${REACT_API_URL}/auth/accounts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setConnectedAccounts(data.accounts || []);
+      } catch (err) {
+        console.error("Failed to fetch accounts", err);
+      }
+    };
+    fetchConnectedAccounts();
+  }, []);
+
   const toggleTodo = (id) => {
     setTodos(
       todos.map((todo) =>
@@ -60,43 +71,21 @@ const MainContent = ({ userName }) => {
   };
 
   const addTodo = () => {
-    if (newTodo.trim() !== "") {
-      const newTodoItem = {
-        id: Date.now(),
-        text: newTodo.trim(),
-        completed: false,
-        priority: "medium",
-      };
-      setTodos([...todos, newTodoItem]);
-      setNewTodo("");
-    }
+    if (newTodo.trim() === "") return;
+    const newTodoItem = { id: Date.now(), text: newTodo.trim(), completed: false, priority: "medium" };
+    setTodos([...todos, newTodoItem]);
+    setNewTodo("");
   };
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
-  };
+  const deleteTodo = (id) => setTodos(todos.filter((todo) => todo.id !== id));
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") addTodo();
-  };
+  const handleKeyPress = (e) => { if (e.key === "Enter") addTodo(); };
+  const clearCompleted = () => setTodos(todos.filter((todo) => !todo.completed));
 
-  const clearCompleted = () => {
-    setTodos(todos.filter((todo) => !todo.completed));
-  };
-
+  // Connect account redirect
   const connectAccount = (platform) => {
-    setConnectedAccounts((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        platform,
-        connected: true,
-        username: `@${platform}user`,
-        followers: `${Math.floor(Math.random() * 10)}.${Math.floor(
-          Math.random() * 9
-        )}K`,
-      },
-    ]);
+    if (platform === "linkedin") window.location.href = `${REACT_API_URL}/auth/linkedin`;
+    if (platform === "x") window.location.href = `${REACT_API_URL}/auth/x`;
   };
 
   const disconnectAccount = (id) => {
@@ -104,91 +93,27 @@ const MainContent = ({ userName }) => {
   };
 
   const platforms = [
-    {
-      name: "Flow Forge",
-      handle: "@flowforge",
-      platform: "twitter",
-      metric: "3.2%",
-      label: "Engagement",
-      change: "+0.4%",
-      trend: "up",
-    },
-    {
-      name: "Flow Forge",
-      handle: "@flowforge.studio",
-      platform: "instagram",
-      metric: "21.4k",
-      label: "Reach (Last Week)",
-      change: "+2.1k",
-      trend: "up",
-    },
-    {
-      name: "Flow Forge",
-      handle: "@flowforgepage",
-      platform: "linkedin",
-      metric: "2.9%",
-      label: "Page Reach",
-      change: "-0.3%",
-      trend: "down",
-    },
+    { name: "Flow Forge", handle: "@flowforge", platform: "twitter", metric: "3.2%", label: "Engagement", change: "+0.4%", trend: "up" },
+    { name: "Flow Forge", handle: "@flowforge.studio", platform: "instagram", metric: "21.4k", label: "Reach (Last Week)", change: "+2.1k", trend: "up" },
+    { name: "Flow Forge", handle: "@flowforgepage", platform: "linkedin", metric: "2.9%", label: "Page Reach", change: "-0.3%", trend: "down" },
   ];
 
   const recentPosts = [
-    {
-      id: 1,
-      platform: "twitter",
-      handle: "@flowforge",
-      content:
-        "We've just wrapped an incredible project with one of our long-term clients. Proud of how our team pushed the boundaries of design and execution...",
-      time: "2 hours ago",
-      metrics: { likes: 245, comments: 42, shares: 12 },
-    },
-    {
-      id: 2,
-      platform: "instagram",
-      handle: "@flowforge.studio",
-      content:
-        "Behind-the-scenes: brainstorming sessions don't always look pretty, but they always spark magic. ✨",
-      time: "5 hours ago",
-      metrics: { likes: 1200, comments: 89, shares: 34 },
-    },
-    {
-      id: 3,
-      platform: "linkedin",
-      handle: "@flowforgepage",
-      content:
-        "Excited to announce our new partnership with TechInnovate! Together we're pushing the boundaries of digital transformation.",
-      time: "1 day ago",
-      metrics: { likes: 567, comments: 45, shares: 23 },
-    },
+    { id: 1, platform: "twitter", handle: "@flowforge", content: "We've just wrapped an incredible project...", time: "2 hours ago", metrics: { likes: 245, comments: 42, shares: 12 } },
+    { id: 2, platform: "instagram", handle: "@flowforge.studio", content: "Behind-the-scenes: brainstorming sessions...", time: "5 hours ago", metrics: { likes: 1200, comments: 89, shares: 34 } },
+    { id: 3, platform: "linkedin", handle: "@flowforgepage", content: "Excited to announce our new partnership with TechInnovate!", time: "1 day ago", metrics: { likes: 567, comments: 45, shares: 23 } },
   ];
 
   const PlatformIcon = ({ platform, size = 20 }) => {
-    const icons = {
-      twitter: TwitterIcon,
-      instagram: InstagramIcon,
-      linkedin: LinkedInIcon,
-    };
+    const icons = { twitter: TwitterIcon, instagram: InstagramIcon, linkedin: LinkedInIcon };
     const Icon = icons[platform] || TwitterIcon;
-    const colors = {
-      twitter: "text-blue-500",
-      instagram: "text-pink-500",
-      linkedin: "text-blue-600",
-    };
+    const colors = { twitter: "text-blue-500", instagram: "text-pink-500", linkedin: "text-blue-600" };
     return <Icon className={`w-${size} h-${size} ${colors[platform]}`} />;
   };
 
   const TrendIndicator = ({ trend, change }) => (
-    <div
-      className={`flex items-center text-xs font-medium ${
-        trend === "up" ? "text-green-500" : "text-red-500"
-      }`}
-    >
-      {trend === "up" ? (
-        <RiArrowUpLine className="w-3 h-3 mr-1" />
-      ) : (
-        <RiArrowDownLine className="w-3 h-3 mr-1" />
-      )}
+    <div className={`flex items-center text-xs font-medium ${trend === "up" ? "text-green-500" : "text-red-500"}`}>
+      {trend === "up" ? <RiArrowUpLine className="w-3 h-3 mr-1" /> : <RiArrowDownLine className="w-3 h-3 mr-1" />}
       {change}
     </div>
   );
@@ -199,137 +124,92 @@ const MainContent = ({ userName }) => {
 
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Performance Snapshot
-        </h1>
-        <p className="text-gray-600">
-          Track how your brand is performing across platforms.
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Performance Snapshot</h1>
+        <p className="text-gray-600">Track how your brand is performing across platforms.</p>
       </div>
 
       {!hasConnectedAccounts ? (
-        // 🚨 No accounts connected: Show connect CTA
         <div className="flex flex-col items-center justify-center min-h-[300px] bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <RiEmotionSadLine className="w-16 h-16 text-gray-300 mb-4" />
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
-            No Accounts Connected
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">No Accounts Connected</h2>
           <p className="text-gray-500 text-center mb-6">
-            Connect your social media accounts to unlock performance insights
-            and recent posts.
+            Connect your social media accounts to unlock performance insights and recent posts.
           </p>
-          <button
-            onClick={() => connectAccount("twitter")}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-600 flex items-center space-x-2"
-          >
-            <RiLink className="w-5 h-5" />
-            <span>Connect Your First Account</span>
-          </button>
+          <div className="flex space-x-4">
+            <button onClick={() => connectAccount("twitter")} className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 flex items-center space-x-2">
+              <TwitterIcon className="w-5 h-5" /> <span>Connect X</span>
+            </button>
+            <button onClick={() => connectAccount("linkedin")} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center space-x-2">
+              <LinkedInIcon className="w-5 h-5" /> <span>Connect LinkedIn</span>
+            </button>
+          </div>
         </div>
       ) : (
-        // ✅ Connected: Show full dashboard
+        // ✅ Full Dashboard
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Left Panel */}
           <div className="lg:col-span-3 space-y-8">
             {/* Social Media Overview */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Social Media Overview
-                </h2>
-                <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                  {connectedAccounts.length} accounts connected
-                </span>
+                <h2 className="text-xl font-bold text-gray-900">Social Media Overview</h2>
+                <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">{connectedAccounts.length} accounts connected</span>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {platforms.map((platform, index) => (
-                  <div
-                    key={index}
-                    className="border border-gray-200 rounded-xl p-5"
-                  >
+                  <div key={index} className="border border-gray-200 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <PlatformIcon platform={platform.platform} size={24} />
                         <div>
-                          <p className="font-semibold text-gray-900">
-                            {platform.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {platform.handle}
-                          </p>
+                          <p className="font-semibold text-gray-900">{platform.name}</p>
+                          <p className="text-sm text-gray-500">{platform.handle}</p>
                         </div>
                       </div>
-                      <TrendIndicator
-                        trend={platform.trend}
-                        change={platform.change}
-                      />
+                      <TrendIndicator trend={platform.trend} change={platform.change} />
                     </div>
-
                     <div className="flex items-end justify-between mt-4">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {platform.metric}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {platform.label}
-                        </p>
+                        <p className="text-2xl font-bold text-gray-900">{platform.metric}</p>
+                        <p className="text-sm text-gray-600">{platform.label}</p>
                       </div>
-                      <button className="text-blue-500 hover:text-blue-600 text-sm font-medium cursor-pointer">
-                        View Insights →
-                      </button>
+                      <button className="text-blue-500 hover:text-blue-600 text-sm font-medium cursor-pointer">View Insights →</button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Recent Posts */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-900">
-                  Recent Posts
-                </h3>
-                <button className="text-blue-500 hover:text-blue-600 text-sm font-medium">
-                  View All Posts →
-                </button>
+                <h3 className="text-lg font-bold text-gray-900">Recent Posts</h3>
+                <button className="text-blue-500 hover:text-blue-600 text-sm font-medium">View All Posts →</button>
               </div>
-
               <div className="space-y-4">
                 {recentPosts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                  >
+                  <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <PlatformIcon platform={post.platform} size={20} />
                         <div>
-                          <p className="font-medium text-gray-900">
-                            {post.handle}
-                          </p>
+                          <p className="font-medium text-gray-900">{post.handle}</p>
                           <p className="text-xs text-gray-500">{post.time}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                          {post.metrics.likes} likes
-                        </span>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">{post.metrics.likes} likes</span>
                       </div>
                     </div>
-
-                    <p className="text-gray-700 text-sm mb-3 leading-relaxed">
-                      {post.content}
-                    </p>
-
+                    <p className="text-gray-700 text-sm mb-3 leading-relaxed">{post.content}</p>
                     <div className="flex justify-between items-center">
                       <div className="flex items-center space-x-4 text-xs text-gray-500">
                         <span>❤️ {post.metrics.likes} likes</span>
                         <span>💬 {post.metrics.comments} comments</span>
                         <span>🔄 {post.metrics.shares} shares</span>
                       </div>
-                      <button className="text-blue-500 hover:text-blue-600 cursor-pointer text-sm font-medium">
-                        View Analytics →
-                      </button>
+                      <button className="text-blue-500 hover:text-blue-600 cursor-pointer text-sm font-medium">View Analytics →</button>
                     </div>
                   </div>
                 ))}
@@ -337,68 +217,49 @@ const MainContent = ({ userName }) => {
             </div>
           </div>
 
+          {/* Right Panel */}
           <div className="space-y-6">
+            {/* Quick Actions */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
-                Quick Actions
-              </h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <button className="w-full bg-blue-500 cursor-pointer text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2">
-                  <RiAddLine className="w-5 h-5" />
-                  <span>Create Post</span>
+                  <RiAddLine className="w-5 h-5" /> <span>Create Post</span>
                 </button>
                 <button className="w-full bg-gray-100 cursor-pointer text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2">
-                  <RiMagicLine className="w-5 h-5" />
-                  <span>AI Generate</span>
+                  <RiMagicLine className="w-5 h-5" /> <span>AI Generate</span>
                 </button>
                 <button className="w-full bg-gray-100 cursor-pointer text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2">
-                  <RiTimeLine className="w-5 h-5" />
-                  <span>Schedule</span>
+                  <RiTimeLine className="w-5 h-5" /> <span>Schedule</span>
                 </button>
               </div>
+
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => connectAccount("twitter")}
-                  className="w-full text-blue-500 cursor-pointer hover:text-blue-600 font-medium flex items-center justify-center space-x-2"
-                >
+                <button onClick={() => connectAccount("twitter")} className="w-full text-blue-500 cursor-pointer hover:text-blue-600 font-medium flex items-center justify-center space-x-2">
                   <span>Connect New Account</span>
                   <RiArrowRightLine className="w-4 h-4" />
                 </button>
-                <p className="text-center text-sm text-gray-500 mt-2">
-                  {connectedAccounts.length} accounts connected
-                </p>
+                <p className="text-center text-sm text-gray-500 mt-2">{connectedAccounts.length} accounts connected</p>
               </div>
             </div>
+
+            {/* Connected Accounts */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
-                Connected Accounts
-              </h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Connected Accounts</h3>
               <div className="space-y-3">
                 {connectedAccounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
+                  <div key={account.platform} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <PlatformIcon platform={account.platform} size={20} />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 capitalize truncate">
-                          {account.platform}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {account.username}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {account.followers} followers
-                        </p>
+                        <p className="text-sm font-medium text-gray-900 capitalize truncate">{account.platform}</p>
+                        <p className="text-xs text-gray-500 truncate">{account.username}</p>
                       </div>
                     </div>
                     <button
                       onClick={() => {
-                        const confirmDisconnect = window.confirm(
-                          `Are you sure you want to disconnect ${account.platform}?`
-                        );
-                        if (confirmDisconnect) disconnectAccount(account.id);
+                        const confirmDisconnect = window.confirm(`Are you sure you want to disconnect ${account.platform}?`);
+                        if (confirmDisconnect) disconnectAccount(account.platform);
                       }}
                       className="text-red-500 hover:text-red-700 p-2 ml-3 rounded-lg text-xs cursor-pointer hover:bg-red-50 transition-colors"
                       title="Disconnect account"
@@ -409,77 +270,35 @@ const MainContent = ({ userName }) => {
                 ))}
               </div>
             </div>
+
+            {/* To-Do */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-900">To Do</h3>
-                <span className="text-sm text-gray-500">
-                  {completedCount}/{totalCount} completed
-                </span>
+                <span className="text-sm text-gray-500">{completedCount}/{totalCount} completed</span>
               </div>
               <div className="flex mb-4">
-                <input
-                  type="text"
-                  value={newTodo}
-                  onChange={(e) => setNewTodo(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Add a new task..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-                <button
-                  onClick={addTodo}
-                  className="bg-blue-500 text-white cursor-pointer px-4 py-2 rounded-r-lg hover:bg-blue-600 transition-colors text-sm"
-                >
-                  Add
-                </button>
+                <input type="text" value={newTodo} onChange={(e) => setNewTodo(e.target.value)} onKeyPress={handleKeyPress} placeholder="Add a new task..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" />
+                <button onClick={addTodo} className="bg-blue-500 text-white cursor-pointer px-4 py-2 rounded-r-lg hover:bg-blue-600 transition-colors text-sm">Add</button>
               </div>
               <div className="space-y-3 max-h-60 overflow-y-auto">
-                {todos.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No tasks yet. Add one above!
-                  </p>
-                ) : (
-                  todos.map((todo) => (
-                    <div
-                      key={todo.id}
-                      className="flex items-center justify-between group"
-                    >
+                {todos.length === 0 ? <p className="text-sm text-gray-500 text-center py-4">No tasks yet. Add one above!</p>
+                  : todos.map((todo) => (
+                    <div key={todo.id} className="flex items-center justify-between group">
                       <div className="flex items-center space-x-3 flex-1">
-                        <input
-                          type="checkbox"
-                          checked={todo.completed}
-                          onChange={() => toggleTodo(todo.id)}
-                          className="w-4 h-4 text-blue-500 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span
-                          className={`text-sm flex-1 ${
-                            todo.completed
-                              ? "line-through text-gray-400"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {todo.text}
-                        </span>
+                        <input type="checkbox" checked={todo.completed} onChange={() => toggleTodo(todo.id)} className="w-4 h-4 text-blue-500 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
+                        <span className={`text-sm flex-1 ${todo.completed ? "line-through text-gray-400" : "text-gray-700"}`}>{todo.text}</span>
                       </div>
-                      <button
-                        onClick={() => deleteTodo(todo.id)}
-                        className="opacity-0 group-hover:opacity-100 cursor-pointer text-red-500 hover:text-red-700 transition-opacity p-1"
-                      >
+                      <button onClick={() => deleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 cursor-pointer text-red-500 hover:text-red-700 transition-opacity p-1">
                         <RiDeleteBinLine className="w-4 h-4" />
                       </button>
                     </div>
-                  ))
-                )}
+                  ))}
               </div>
-              {completedCount > 0 && (
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <button
-                    onClick={clearCompleted}
-                    className="w-full text-red-500 cursor-pointer hover:text-red-700 text-sm font-medium py-2 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    Clear Completed ({completedCount})
-                  </button>
-                </div>
-              )}
+              {completedCount > 0 && <div className="mt-4 pt-3 border-t border-gray-200">
+                <button onClick={clearCompleted} className="w-full text-red-500 cursor-pointer hover:text-red-700 text-sm font-medium py-2 hover:bg-red-50 rounded-lg transition-colors">Clear Completed ({completedCount})</button>
+              </div>}
             </div>
           </div>
         </div>

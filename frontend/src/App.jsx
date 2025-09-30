@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import PrivateRoute from "./routes/PrivateRoute";
+import AuthSuccess from "./components/AuthSucces";
 
 const App = () => {  
   return (
@@ -18,6 +19,7 @@ const App = () => {
             </PrivateRoute>
           }
         />
+        <Route path="/auth-success" element={<AuthSuccess />} />
       </Routes>
     </Router>
   );
